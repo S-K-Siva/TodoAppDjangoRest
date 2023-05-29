@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-DO</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+    <style>
+        body{
+            background:linear-gradient(to right, lightgreen,blue,lightpink);
+        }
+        
+        #form-wrapper{
+            
+            border-radius: 25px;
+            background-color: whitesmoke;
+            max-width:600px;
+            max-width: 600px;
+            justify-content: space-around;
+            align-items:flex-start;
+            margin:100px auto;
+        }
+        .list{
+            padding:15px 5px;
+            border-bottom:1px solid lightsteelblue;
+            border-width: 100%;
+        }
+        #form-search{
+        border-top-left-radius: 25px;
+        border-top-right-radius: 25px;
+       
+        position:-webkit-sticky;
+        position:sticky;
+        top:0rem;
+        border-bottom:1px solid cadetblue;
+        padding:50px;
+        background-color:white;
+
+        }
+        .flex-wrapper{
+            display: flex;
+            border-bottom:2px solid linear-gradient(to right, lightgreen,blue,lightpink);
+        }
+        #submit{
+            border:0;
+            border-radius: 10px;
+            padding:15px;
+            background:linear-gradient(to right, lightgreen,blue,lightpink);
+            color:white;
+            margin:2px;
+
+        }
+        #form-list{
+            padding:20px;
+            border-bottom:1px solid linear-gradient(to right, lightgreen,blue,lightpink);
+            cursor: pointer;
+            margin:5px;
+        }
+        #NewTitle{
+            width:100%;
+            padding:15px;
+            border-radius:10px;
+            margin:0;
+            margin-left:-15px;
+            border:2px solid blue;
+        }
+        button{
+            
+            
+            padding:2px;
+            background-color:rgb(73, 73, 220);
+            border-radius:10px;
+            color:white;
+        }
+        .delete{
+            padding:auto 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class = "container">
+        <div id = "form-wrapper" class = "top">
+            <div id="form-search">
+                <form id="form">
+                    <div class = "flex-wrapper">
+                        <div style="flex:5">
+                            <input id="NewTitle" name ="NewTitle" type="text" placeholder="Add task">
+                        </div>
+                        <div style="flex:1">
+                            <input id="submit" name="submit" type="submit" value = "Submit">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div id="form-list">
+                {% for task in tasks %} 
+                <div>
+                    <h3>{{task.taskTitle}}</h3>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+    </div>
+    <script>
+        Items_list();
+        function Items_list(){
+            var wrapper = document.getElementById('form-list');
+            var url = 'http://127.0.0.1:8000/api/task-list/';
+            wrapper.innerHTML = '';
+            fetch(url).
+            then((resp)=> resp.json())
+            .then(function(data){
+                var list = data;
+               
+                for(var i in list){
+                    var print_title = `<span>${list[i].taskTitle}</span>`
+                    if(list[i].completed == true){
+                        print_title = `<span><s>${list[i].taskTitle}</s></span>`
+                    }
+                    var item = 
+                    `
+                    <div id = "row-index-${i}" class = "list flex-wrapper " >
+                        <div style="flex:7" class = "strike">
+                            ${print_title}
+                        </div>
+                        <div style="flex:1" class = "edit">
+                            <button>Edit</button> 
+                        </div>
+                        <div style="flex:1;" class = "delete">
+                            <button>-</button>
+                        </div>
+                    </div>
+                    `
+                wrapper.innerHTML += item
+                } 
+                for(var i in list){
+                    var editbutton = document.getElementsByClassName('edit')[i];
+                    var deletebutton = document.getElementsByClassName('delete')[i];
+                    var strikebutton = document.getElementsByClassName('strike')[i];
+                    editbutton.addEventListener('click',(function(item){
+                        return function(){
+                        editItem(item);
+                        }
+                    })(list[i])) 
+
+                    deletebutton.addEventListener('click',(function(item){
+                        return function(){
+                            deleteItem(item);
+                        }
+                    })(list[i]))
+                    strikebutton.addEventListener('click',(function(item){
+                        return function(){
+                            strikeItem(item);
+                        }
+                    })(list[i]))
+                }
+            }) 
+            
+        }
+        function strikeItem(item){
+            console.log("Item Striked Successfully!");
+            item.completed = !item.completed;
+            // `api/delete-task/${item.id}`
+            fetch(`api/update-task/${item.id}`,{
+                method : 'POST',
+                headers : {
+                    'Content-type':'application/json',
+                    'X-CSRFToken':csrftoken,
+                },
+                body:JSON.stringify({'taskTitle':item.taskTitle,'completed':item.completed})
+            }).then(function(response){
+                Items_list();
+            })
+        }
+        function deleteItem(item){
+            console.log("Delete Button Clicked");
+            item.completed = !item.completed;
+            fetch(`api/delete-task/${item.id}`,{
+                method : 'DELETE',
+                headers : {
+                    'Content-type':'application/json',
+                    'X-CSRFToken':csrftoken,
+                },
+                body:JSON.stringify({'taskTitle':item.taskTitle,'completed':item.completed})
+            }).then(function(response){
+                Items_list();
+            })
+        }
+        
+        var activeEditTask = null;
+        function editItem(item){
+            document.getElementById('NewTitle').value = item.taskTitle;
+            activeEditTask = item;
+        }
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+
+        var item = document.getElementById('form-wrapper');
+        item.addEventListener('submit',function(e){
+            e.preventDefault();
+            if(activeEditTask === null){
+                console.log("creating...");
+                var url = 'api/create/'
+            }
+            else{
+                console.log("updating....")
+                var url = `api/update-task/${activeEditTask.id}`
+                activeEditTask = null;
+            }
+
+            var Title = document.getElementById("NewTitle").value
+            console.log(Title);
+            var json_object = JSON.stringify({'taskTitle':Title,'completed':false});
+            console.log(json_object);
+            fetch(url,{
+                method:'POST',
+                headers:{
+                    'Content-type':'application/json',
+                    'X-CSRFToken': csrftoken,
+                },
+                body: JSON.stringify({
+                    'taskTitle':Title,'completed':false
+                })
+            }).then(function(response){
+                Items_list();
+                document.getElementById('form').reset();
+            })
+        })
+    </script>
+</body>
+</html>
